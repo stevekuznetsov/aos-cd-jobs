@@ -63,25 +63,14 @@ set -o nounset
 set -o pipefail
 set -o xtrace
 
-# set up the virtualenv for the origin-ci-tool
-if [[ ! -d &quot;./venv&quot; ]]; then
-    virtualenv venv --system-site-packages # we need system yum, can&apos;t install it in a venv
-    # minimal virtualenv activation
-    cat &gt; ./activate &lt;&lt;EOF
-export VIRTUAL_ENV=&quot;$( pwd )/venv&quot;
-export PATH=&quot;\${VIRTUAL_ENV}/bin:\${PATH}&quot;
-unset PYTHON_HOME
-EOF
-fi
+# choose the latest virtualenv for the origin-ci-tool
+cp &quot;${HOME}/origin-ci-tool/latest/bin/activate&quot; &quot;${WORKSPACE}/activate&quot;
 
 # enter the origin-ci-tool virtualenv
-source activate
-
-# install the origin-ci-tool
-pip install git+https://github.com/openshift/origin-ci-tool.git --upgrade --process-dependency-links
+source &quot;${WORKSPACE}/activate&quot;
 
 # localize configuration for this workspace
-export OCT_CONFIG_HOME=&quot;$(pwd)/.config&quot;
+export OCT_CONFIG_HOME=&quot;${WORKSPACE}/.config&quot;
 mkdir -p &quot;${OCT_CONFIG_HOME}&quot;
 
 # remove any configuration from previous runs
