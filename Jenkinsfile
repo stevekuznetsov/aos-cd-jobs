@@ -24,7 +24,7 @@ node('buildvm-devops') {
 		"PATH=${venv_dir}/bin:${env.PATH}",
 		"PYTHON_HOME=",
 		"OCT_CONFIG_HOME=${env.WORKSPACE}/.config",
-		"ANSIBLE_SSH_CONTROL_PATH_DIR=${env.WORKSPACE}/.ansible/cp",
+		"ANSIBLE_SSH_CONTROL_PATH_DIR=${env.HOME}/.ansible/cp",
 		"ANSIBLE_SSH_CONTROL_PATH=%(directory)/%%h-%%p-%%r"
 	]) {
 		stage ('Install dependencies in the virtualenv') {
@@ -42,7 +42,7 @@ node('buildvm-devops') {
 		try {
 			stage ('Provision the remote host') {
 				sh "oct provision remote all-in-one --os rhel --stage bare --provider aws --name package-dockertest-${env.BUILD_NUMBER} --discrete-ssh-config"
-				def ssh_config = "${env.OCT_CONFIG_HOME}/origin-ci-tool/inventory/.ssh_config"
+				ssh_config = "${env.OCT_CONFIG_HOME}/origin-ci-tool/inventory/.ssh_config"
 			}
 			stage ('Install distribution dependencies') {
 				sh 'oct prepare dependencies'
