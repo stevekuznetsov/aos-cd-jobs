@@ -32,18 +32,17 @@ node('buildvm-devops') {
 		stage ('Install the origin-ci-tool') {
 			sh 'pip install --ignore-installed git+https://github.com/openshift/origin-ci-tool.git --process-dependency-links'
 		}
-		stage ('Configure the origin-ci-tool') {
-			sh 'oct configure ansible-client verbosity 2'
-			sh 'oct configure aws-client keypair_name libra'
-			withCredentials([[$class: 'FileBinding', credentialsId: 'devenv', variable: 'PRIVATE_KEY_PATH']]) {
+		withCredentials([
+			[$class: 'FileBinding', credentialsId: 'devenv', variable: 'PRIVATE_KEY_PATH'],
+			[$class: 'StringBinding', credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'],
+			[$class: 'StringBinding', credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY']
+		]) {
+			stage ('Configure the origin-ci-tool') {
+				sh 'oct configure ansible-client verbosity 2'
+				sh 'oct configure aws-client keypair_name libra'
 				sh "oct configure aws-client private_key_path ${env.PRIVATE_KEY_PATH}"
 			}
-		}
-		try {
-			withCredentials([
-				[$class: 'StringBinding', credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'],
-				[$class: 'StringBinding', credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY']
-			]) {
+			try {
 				stage ('Provision the remote host') {
 					sh "oct provision remote all-in-one --os rhel --stage bare --provider aws --name package-dockertest-${env.BUILD_NUMBER} --discrete-ssh-config"
 					def ssh_config = "${env.OCT_CONFIG_HOME}/origin-ci-tool/inventory/.ssh_config"
@@ -68,26 +67,20 @@ node('buildvm-devops') {
 				stage ('Run the extended conformance suite') {
 					sh "ssh -F ${ssh_config} openshiftdevel 'cd /data/src/github/openshift/origin; sudo su origin; make test-extended SUITE=conformance'"
 				}
-			}
-		} finally {
-			withCredentials([
-				[$class: 'StringBinding', credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'],
-				[$class: 'StringBinding', credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY']
-			]) {
+			} finally {
 				stage ('Deprovision the remote host') {
 					sh 'oct deprovision'
 				}
-			}
-			if ( currentBuild.result == 'SUCCESS' ) {
-				stage ('Update the state of the dockertested repo') {
-					sh 'kinit -k -t /home/jenkins/ocp-build.keytab ocp-build/atomic-e2e-jenkins.rhev-ci-vms.eng.rdu2.redhat.com@REDHAT.COM'
-					sh "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com /mnt/rcm-guest/puddles/RHAOS/scripts/update-dockertested-repo.sh ${docker_rpm} ${container_selinux_rpm}"
-				}
-				stage ('Send out an e-mail about new versions') {
-					mail (
-						to: ['aos-devel@redhat.com', 'skuznets@redhat.com'],
-						subject: "${docker_rpm} and ${container_selinux_rpm} pushed to dockertested repository",
-						body: """The latest job[1] marked the following RPMs as successful:
+				if ( currentBuild.result == 'SUCCESS' ) {
+					stage ('Update the state of the dockertested repo') {
+						sh 'kinit -k -t /home/jenkins/ocp-build.keytab ocp-build/atomic-e2e-jenkins.rhev-ci-vms.eng.rdu2.redhat.com@REDHAT.COM'
+						sh "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com /mnt/rcm-guest/puddles/RHAOS/scripts/update-dockertested-repo.sh ${docker_rpm} ${container_selinux_rpm}"
+					}
+					stage ('Send out an e-mail about new versions') {
+						mail (
+							to: ['aos-devel@redhat.com', 'skuznets@redhat.com'],
+							subject: "${docker_rpm} and ${container_selinux_rpm} pushed to dockertested repository",
+							body: """The latest job[1] marked the following RPMs as successful:
 ${docker_rpm}
 ${container_selinux_rpm}
 
@@ -95,7 +88,8 @@ These RPMs have been pushed to the dockertested[2] repository.
 
 [1] ${env.JOB_URL}
 [2] https://mirror.openshift.com/enterprise/rhel/dockertested/x86_64/os/"""
-					)
+						)
+					}
 				}
 			}
 		}
