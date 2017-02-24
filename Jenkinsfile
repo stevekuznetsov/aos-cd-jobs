@@ -40,7 +40,10 @@ node('buildvm-devops') {
 			}
 		}
 		try {
-			withCredentials([[$class: 'FileBinding', credentialsId: 'aws', variable: 'AWS_CONFIG_FILE']]) {
+			withCredentials([
+				[$class: 'StringBinding', credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'],
+				[$class: 'StringBinding', credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY']
+			]) {
 				stage ('Provision the remote host') {
 					sh "oct provision remote all-in-one --os rhel --stage bare --provider aws --name package-dockertest-${env.BUILD_NUMBER} --discrete-ssh-config"
 					def ssh_config = "${env.OCT_CONFIG_HOME}/origin-ci-tool/inventory/.ssh_config"
