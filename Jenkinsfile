@@ -30,7 +30,7 @@ node('buildvm-devops') {
 			sh 'pip install --ignore-installed boto boto3'
 		}
 		stage ('Install the origin-ci-tool') {
-			sh 'pip install --ignore-installed git+https://github.com/openshift/origin-ci-tool.git --process-dependency-links'
+			sh 'pip install git+https://github.com/openshift/origin-ci-tool.git --process-dependency-links'
 		}
 		stage ('Configure the origin-ci-tool') {
 			sh 'oct configure ansible-client verbosity 5'
