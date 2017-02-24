@@ -32,55 +32,50 @@ node('buildvm-devops') {
 		stage ('Install the origin-ci-tool') {
 			sh 'pip install --ignore-installed git+https://github.com/openshift/origin-ci-tool.git --process-dependency-links'
 		}
-		withCredentials([
-			[$class: 'FileBinding', credentialsId: 'devenv', variable: 'PRIVATE_KEY_PATH'],
-			[$class: 'StringBinding', credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'],
-			[$class: 'StringBinding', credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY']
-		]) {
-			stage ('Configure the origin-ci-tool') {
-				sh 'oct configure ansible-client verbosity 2'
-				sh 'oct configure aws-client keypair_name libra'
-				sh "oct configure aws-client private_key_path ${env.PRIVATE_KEY_PATH}"
+		stage ('Configure the origin-ci-tool') {
+			sh 'oct configure ansible-client verbosity 2'
+			sh 'oct configure aws-client keypair_name libra'
+			sh "oct configure aws-client private_key_path /home/jenkins/.ssh/devenv.pem"
+		}
+		try {
+			stage ('Provision the remote host') {
+				sh "oct provision remote all-in-one --os rhel --stage bare --provider aws --name package-dockertest-${env.BUILD_NUMBER} --discrete-ssh-config"
+				def ssh_config = "${env.OCT_CONFIG_HOME}/origin-ci-tool/inventory/.ssh_config"
 			}
-			try {
-				stage ('Provision the remote host') {
-					sh "oct provision remote all-in-one --os rhel --stage bare --provider aws --name package-dockertest-${env.BUILD_NUMBER} --discrete-ssh-config"
-					def ssh_config = "${env.OCT_CONFIG_HOME}/origin-ci-tool/inventory/.ssh_config"
+			stage ('Install distribution dependencies') {
+				sh 'oct prepare dependencies'
+			}
+			stage ('Install Golang') {
+				sh 'oct prepare golang --version 1.6.3 --repo oso-rhui-rhel-server-releases-optional'
+			}
+			stage ('Install Docker') {
+				sh 'oct prepare docker --repourl https://mirror.openshift.com/enterprise/rhel/rhel7next/extras/'
+				docker_rpm = sh script: 'rpm --query docker --queryformat %{SOURCERPM}', returnStdout: true
+				container_selinux_rpm = sh script: 'rpm --query container-selinux --queryformat %{SOURCERPM}', returnStdout: true
+			}
+			stage ('Prepare source repositories') {
+				sh 'oct prepare repositories'
+			}
+			stage ('Build an Origin release') {
+				sh "ssh -F ${ssh_config} openshiftdevel 'cd /data/src/github/openshift/origin; sudo su origin; hack/build-base-images.sh; make release'"
+			}
+			stage ('Run the extended conformance suite') {
+				sh "ssh -F ${ssh_config} openshiftdevel 'cd /data/src/github/openshift/origin; sudo su origin; make test-extended SUITE=conformance'"
+			}
+		} finally {
+			stage ('Deprovision the remote host') {
+				sh 'oct deprovision'
+			}
+			if ( currentBuild.result == 'SUCCESS' ) {
+				stage ('Update the state of the dockertested repo') {
+					sh 'kinit -k -t /home/jenkins/ocp-build.keytab ocp-build/atomic-e2e-jenkins.rhev-ci-vms.eng.rdu2.redhat.com@REDHAT.COM'
+					sh "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com /mnt/rcm-guest/puddles/RHAOS/scripts/update-dockertested-repo.sh ${docker_rpm} ${container_selinux_rpm}"
 				}
-				stage ('Install distribution dependencies') {
-					sh 'oct prepare dependencies'
-				}
-				stage ('Install Golang') {
-					sh 'oct prepare golang --version 1.6.3 --repo oso-rhui-rhel-server-releases-optional'
-				}
-				stage ('Install Docker') {
-					sh 'oct prepare docker --repourl https://mirror.openshift.com/enterprise/rhel/rhel7next/extras/'
-					docker_rpm = sh script: 'rpm --query docker --queryformat %{SOURCERPM}', returnStdout: true
-					container_selinux_rpm = sh script: 'rpm --query container-selinux --queryformat %{SOURCERPM}', returnStdout: true
-				}
-				stage ('Prepare source repositories') {
-					sh 'oct prepare repositories'
-				}
-				stage ('Build an Origin release') {
-					sh "ssh -F ${ssh_config} openshiftdevel 'cd /data/src/github/openshift/origin; sudo su origin; hack/build-base-images.sh; make release'"
-				}
-				stage ('Run the extended conformance suite') {
-					sh "ssh -F ${ssh_config} openshiftdevel 'cd /data/src/github/openshift/origin; sudo su origin; make test-extended SUITE=conformance'"
-				}
-			} finally {
-				stage ('Deprovision the remote host') {
-					sh 'oct deprovision'
-				}
-				if ( currentBuild.result == 'SUCCESS' ) {
-					stage ('Update the state of the dockertested repo') {
-						sh 'kinit -k -t /home/jenkins/ocp-build.keytab ocp-build/atomic-e2e-jenkins.rhev-ci-vms.eng.rdu2.redhat.com@REDHAT.COM'
-						sh "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com /mnt/rcm-guest/puddles/RHAOS/scripts/update-dockertested-repo.sh ${docker_rpm} ${container_selinux_rpm}"
-					}
-					stage ('Send out an e-mail about new versions') {
-						mail (
-							to: ['aos-devel@redhat.com', 'skuznets@redhat.com'],
-							subject: "${docker_rpm} and ${container_selinux_rpm} pushed to dockertested repository",
-							body: """The latest job[1] marked the following RPMs as successful:
+				stage ('Send out an e-mail about new versions') {
+					mail (
+						to: ['aos-devel@redhat.com', 'skuznets@redhat.com'],
+						subject: "${docker_rpm} and ${container_selinux_rpm} pushed to dockertested repository",
+						body: """The latest job[1] marked the following RPMs as successful:
 ${docker_rpm}
 ${container_selinux_rpm}
 
@@ -88,8 +83,7 @@ These RPMs have been pushed to the dockertested[2] repository.
 
 [1] ${env.JOB_URL}
 [2] https://mirror.openshift.com/enterprise/rhel/dockertested/x86_64/os/"""
-						)
-					}
+					)
 				}
 			}
 		}
