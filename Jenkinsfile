@@ -70,8 +70,13 @@ node('buildvm-devops') {
 				}
 			}
 		} finally {
-			stage ('Deprovision the remote host') {
-				sh 'oct deprovision'
+			withCredentials([
+				[$class: 'StringBinding', credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'],
+				[$class: 'StringBinding', credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY']
+			]) {
+				stage ('Deprovision the remote host') {
+					sh 'oct deprovision'
+				}
 			}
 			if ( currentBuild.result == 'SUCCESS' ) {
 				stage ('Update the state of the dockertested repo') {
