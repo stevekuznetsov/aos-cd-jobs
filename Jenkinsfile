@@ -25,7 +25,7 @@ node('buildvm-devops') {
 		"PYTHON_HOME=",
 		"OCT_CONFIG_HOME=${env.WORKSPACE}/.config",
 		"ANSIBLE_SSH_CONTROL_PATH_DIR=${env.HOME}/.ansible/cp",
-		"ANSIBLE_SSH_CONTROL_PATH=%(directory)/%%h-%%p-%%r"
+		"ANSIBLE_SSH_CONTROL_PATH=%(directory)s/%%h-%%p-%%r"
 	]) {
 		stage ('Install dependencies in the virtualenv') {
 			sh "pip install --ignore-installed --upgrade pip"
