@@ -59,10 +59,25 @@ node('buildvm-devops') {
 				sh 'oct prepare repositories'
 			}
 			stage ('Build an Origin release') {
-				sh "ssh -F ${ssh_config} openshiftdevel 'cd /data/src/github.com/openshift/origin && sudo su origin && hack/build-base-images.sh; make release'"
+				sh "{
+cat <<EOF
+sudo su origin
+set -o errexit -o nounset -o pipefail -o xtrace
+cd /data/src/github.com/openshift/origin
+hack/build-base-images.sh
+make release
+EOF
+} | ssh -F ${ssh_config} openshiftdevel"
 			}
 			stage ('Run the extended conformance suite') {
-				sh "ssh -F ${ssh_config} openshiftdevel 'cd /data/src/github.com/openshift/origin && sudo su origin && make test-extended SUITE=conformance'"
+				sh "{
+cat <<EOF
+sudo su origin
+set -o errexit -o nounset -o pipefail -o xtrace
+cd /data/src/github.com/openshift/origin
+make test-extended SUITE=conformance
+EOF
+} | ssh -F ${ssh_config} openshiftdevel"
 			}
 		} finally {
 			stage ('Deprovision the remote host') {
