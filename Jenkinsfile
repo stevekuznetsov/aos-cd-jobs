@@ -7,6 +7,8 @@ node('buildvm-devops') {
 			description: 'Destroy the previous <code>virtualenv</code> and install the <code>origin-ci-tool</code> from scratch.',
 			name: 'CLEAN_INSTALL'
 		]]
+	],[
+	    pipelineTriggers([cron('H H * * *')]),
 	]])
 	// https://issues.jenkins-ci.org/browse/JENKINS-33511
 	env.WORKSPACE = pwd()
