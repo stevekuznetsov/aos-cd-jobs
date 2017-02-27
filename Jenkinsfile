@@ -51,7 +51,7 @@ node('buildvm-devops') {
 				sh 'oct prepare golang --version 1.6.3 --repo oso-rhui-rhel-server-releases-optional'
 			}
 			stage ('Install Docker') {
-				sh 'oct prepare docker --repourl https://mirror.openshift.com/enterprise/rhel/rhel7next/extras/'
+				sh 'oct prepare docker --repo "rhel7next*"'
 				docker_rpm = sh script: 'rpm --query docker --queryformat %{SOURCERPM}', returnStdout: true
 				container_selinux_rpm = sh script: 'rpm --query container-selinux --queryformat %{SOURCERPM}', returnStdout: true
 			}
