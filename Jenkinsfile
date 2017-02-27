@@ -75,7 +75,7 @@ cat <<EOF
 sudo su origin
 set -o errexit -o nounset -o pipefail -o xtrace
 cd /data/src/github.com/openshift/origin
-make test-extended SUITE=conformance
+JUNIT_REPORT='true' make test-extended SUITE=conformance
 EOF
 } | ssh -F ${ssh_config} openshiftdevel"""
 			}
