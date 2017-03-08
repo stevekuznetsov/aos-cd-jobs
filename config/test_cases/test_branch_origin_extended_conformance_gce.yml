@@ -4,6 +4,10 @@ extensions:
   sync_repos:
     - name: "release"
   parameters:
+    - name: "DOCKER_STORAGE_DRIVER"
+      description: >
+        The storage driver to use when configuring the cluster. 'overlay2' and 'devicemapper' are allowed.
+      default_value: "devicemapper"
     - name: "OPENSHIFT_ANSIBLE_IMAGE"
       description: >
         The image to install the cluster with. If set, defaults to the value defined by the
@@ -31,6 +35,7 @@ extensions:
         - ADDITIONAL_SKIP
         - JOB_NAME
         - BUILD_NUMBER
+        - DOCKER_STORAGE_DRIVER
     - type: "script"
       title: "build origin RPMs"
       repository: "origin"
@@ -101,7 +106,7 @@ extensions:
         }
         trap cleanup ERR
 
-        ../../bin/local.sh ansible-playbook -e "openshift_test_repo=${location_url}" playbooks/launch.yaml
+        ../../bin/local.sh ansible-playbook -e "provision_gce_docker_storage_driver=${DOCKER_STORAGE_DRIVER}" -e "openshift_test_repo=${location_url}" playbooks/launch.yaml
         cp admin.kubeconfig /tmp/cluster-admin.kubeconfig
     - type: "script"
       title: "run extended tests"
