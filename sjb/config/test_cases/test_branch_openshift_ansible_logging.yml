@@ -108,8 +108,8 @@ extensions:
         export OS_ROOT="$( realpath ./../origin )"
         hack/testing/check-EFK-running.sh
         hack/testing/check-logs.sh
-        hack/testing/test-datetime-future.sh || true
         hack/testing/test-curator.sh "${ENABLE_OPS_CLUSTER}"
+        hack/testing/test-datetime-future.sh || true
         USE_MUX_CLIENT=true MUX_ALLOW_EXTERNAL=true hack/testing/test-mux.sh || true
         hack/testing/test-viaq-data-model.sh || true
         hack/testing/test-mux.sh || true
