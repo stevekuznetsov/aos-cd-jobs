@@ -4,6 +4,7 @@ extensions:
   sync_repos:
     - name: "openshift-ansible"
     - name: "aos-cd-jobs"
+      type: "pull_request"
   actions:
     - type: "forward_parameters"
       parameters:
