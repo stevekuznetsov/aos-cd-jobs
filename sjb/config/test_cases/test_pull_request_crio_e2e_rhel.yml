@@ -45,7 +45,20 @@ actions:
                        --become-user root \
                        --connection local \
                        /data/src/github.com/kubernetes-incubator/cri-o/contrib/test/integration/main.yml
-post_actions: []
+post_actions:
+  - type: "script"
+    title: "gather cri-o test output"
+    script: |-
+      if [[ ! -s /data/src/github.com/kubernetes-incubator/cri-o/contrib/test/integration/results.yml ]]; then
+        echo "Skipping, no results playbook found."
+        exit 0
+      fi
+      ansible-playbook -vv --become  \
+                       -i localhost, \
+                       --tags e2e    \
+                       --become-user root \
+                       --connection local \
+                       /data/src/github.com/kubernetes-incubator/cri-o/contrib/test/integration/results.yml
 artifacts:
   - /data/src/k8s.io/kubernetes/artifacts
   - /data/src/k8s.io/kubernetes/e2e.log
